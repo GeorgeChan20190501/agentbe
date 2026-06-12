@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/ai-admin/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-admin/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-agent/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-agent/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-chat/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-chat/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-common/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-common/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-intent/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-intent/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-model/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-model/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-skill/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-skill/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-start/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-system/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-system/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-tool/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-tool/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-web/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-web/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-workflow/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ai-workflow/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
+  </component>
+</project>
