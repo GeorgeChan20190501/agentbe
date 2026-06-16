@@ -1,23 +1,46 @@
 package com.icbc.agent.aiweb.chat;
 
-import com.icbc.agent.aicommon.chat.Chat;
+import com.icbc.agent.aichat.service.ChatService;
 import com.icbc.agent.aiweb.common.Result;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 
 @RestController
-@ComponentScan("com.icbc.agent.*")
 public class ChatController {
 
-    @PostMapping("ai/message")
-    public Result<String> chat() {
-        return Result.success(new Chat().getCommon());
+    @Autowired
+    private ChatService chatService;
+
+    @PostMapping("/ai/message")
+    public Result<String> chat(@RequestBody ChatRequest request) {
+        try {
+            String response = chatService.chat(request.getMessage());
+            return Result.success(response);
+        } catch (Exception e) {
+            return Result.error("AI对话失败: " + e.getMessage());
+        }
     }
 
+    /**
+     * 流式对话接口
+     */
+    @PostMapping(value = "/ai/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<Object> streamChat(@RequestBody ChatRequest request) {
+        return chatService.streamChat(request.getMessage());
+    }
 
     @PostMapping("/auth/login")
     public String login() {
         return "1";
+    }
+
+    /**
+     * 聊天请求DTO
+     */
+    @lombok.Data
+    public static class ChatRequest {
+        private String message;
     }
 }
