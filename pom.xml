@@ -29,14 +29,14 @@
         <module>ai-common</module>
         <module>ai-start</module>
         <module>ai-web</module>
-        <module>ai-system</module>
         <module>ai-chat</module>
         <module>ai-intent</module>
         <module>ai-workflow</module>
         <module>ai-skill</module>
-        <module>ai-model</module>
         <module>ai-tool</module>
+        <module>ai-model</module>
         <module>ai-agent</module>
+        <module>ai-system</module>
         <module>ai-admin</module>
     </modules>
 

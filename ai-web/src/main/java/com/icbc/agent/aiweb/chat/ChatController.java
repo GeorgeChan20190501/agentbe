@@ -2,16 +2,16 @@ package com.icbc.agent.aiweb.chat;
 
 import com.icbc.agent.aichat.service.ChatService;
 import com.icbc.agent.aiweb.common.Result;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
 @RestController
+@RequiredArgsConstructor
 public class ChatController {
 
-    @Autowired
-    private ChatService chatService;
+    private final ChatService chatService;
 
     @PostMapping("/ai/message")
     public Result<String> chat(@RequestBody ChatRequest request) {

@@ -46,6 +46,15 @@
             <version>7.0.8</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.icbc.agent</groupId>
+            <artifactId>ai-workflow</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

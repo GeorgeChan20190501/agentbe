@@ -36,3 +36,16 @@ V5 - 自主AI智能体 ✅ 最高级别AI自主决策<br>
 可行性评估<br>
 ✅ 技术可行性高 - 后端模块划分合理，支持渐进式开发 <br>✅ 架构设计优秀 - 模块化设计便于功能扩展<br> ✅ 演进路径清晰 - 每个版本都有明确的目标和价值
 你的项目有很大潜力成功！这正是当前AI领域最前沿的方向。
+
+ai-common    ← 基础公共层<br>
+ai-start     ← 启动入口<br>
+ai-web       ← 接收请求<br>
+ai-chat      ← 聊天处理<br>
+ai-intent    ← 意图识别<br>
+ai-workflow  ← 工作流编排<br>
+ai-skill     ← 技能<br>
+ai-tool      ← 工具<br>
+ai-model     ← 模型汇总总结<br>
+ai-agent     ← Agent<br>
+ai-system    ← 系统<br>
+ai-admin     ← 管理<br>
