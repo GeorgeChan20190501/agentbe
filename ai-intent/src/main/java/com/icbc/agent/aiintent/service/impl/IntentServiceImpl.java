@@ -6,21 +6,19 @@ import com.alibaba.fastjson2.JSONObject;
 import com.icbc.agent.aiintent.entity.IntentConfig;
 import com.icbc.agent.aiintent.entity.IntentResult;
 import com.icbc.agent.aiintent.service.IntentService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class IntentServiceImpl implements IntentService {
 
     private final ChatClient chatClient;
     private final IntentConfigLoader intentConfigLoader;
 
-    public IntentServiceImpl(ChatClient chatClient, IntentConfigLoader intentConfigLoader) {
-        this.chatClient = chatClient;
-        this.intentConfigLoader = intentConfigLoader;
-    }
 
     @Override
     public IntentResult recognize(String question) {

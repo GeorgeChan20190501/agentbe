@@ -14,21 +14,18 @@ public class ChatController {
     private final ChatService chatService;
 
     @PostMapping("/ai/message")
-    public Result<String> chat(@RequestBody ChatRequest request) {
+    public Result<ChatService.ChatResult> chat(@RequestBody ChatRequest request) {
         try {
-            String response = chatService.chat(request.getMessage());
-            return Result.success(response);
+            ChatService.ChatResult chatResult = chatService.chat(request.getMessage(), request.getSessionId());
+            return Result.success(chatResult);
         } catch (Exception e) {
             return Result.error("AI对话失败: " + e.getMessage());
         }
     }
 
-    /**
-     * 流式对话接口
-     */
     @PostMapping(value = "/ai/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<Object> streamChat(@RequestBody ChatRequest request) {
-        return chatService.streamChat(request.getMessage());
+        return chatService.streamChat(request.getMessage(), request.getSessionId());
     }
 
     @PostMapping("/auth/login")
@@ -36,11 +33,9 @@ public class ChatController {
         return "1";
     }
 
-    /**
-     * 聊天请求DTO
-     */
     @lombok.Data
     public static class ChatRequest {
+        private String sessionId;
         private String message;
     }
 }

@@ -33,7 +33,7 @@ public class SkillExecutor {
 
         String userPrompt = fillPromptTemplate(userPromptTemplate, context);
 
-        AiModelService model = resolveModel(modelName);
+        AiModelService model = getModel(modelName);
         return model.chat(systemPrompt + "\n\n" + userPrompt);
     }
 
@@ -47,9 +47,10 @@ public class SkillExecutor {
         String userPromptTemplate = (String) skill.get("user_prompt");
         String modelName = (String) skill.get("model_name");
 
+        //将tool中的结果填充替换模板中的提示词，形成完整的skill，最后将skill提示词丢给大模型
         String userPrompt = fillPromptTemplate(userPromptTemplate, context);
 
-        AiModelService model = resolveModel(modelName);
+        AiModelService model = getModel(modelName);
         return model.streamChat(systemPrompt + "\n\n" + userPrompt);
     }
 
@@ -70,7 +71,7 @@ public class SkillExecutor {
         return result;
     }
 
-    private AiModelService resolveModel(String modelName) {
+    private AiModelService getModel(String modelName) {
         if (modelName != null && !modelName.isEmpty()) {
             try {
                 return modelFactory.getModel(modelName);

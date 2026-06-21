@@ -1,6 +1,7 @@
 package com.icbc.agent.aiintent.service.impl;
 
 import com.icbc.agent.aiintent.entity.IntentConfig;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -10,22 +11,18 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
+@RequiredArgsConstructor
 public class IntentConfigLoader {
 
     private final JdbcTemplate jdbcTemplate;
-
-    public IntentConfigLoader(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-    }
 
     /** 读取数据库意图配置，并根据id找意图示例，最终封装成IntentConfig对象
      * @return List<IntentConfig>
      */
     public List<IntentConfig> loadEnabledIntents() {
-        String intentSql = "SELECT intent_id, intent_name, description, match_prompt, workflow_id " +
-                "FROM ai_intent WHERE enable_flag = '是' ORDER BY sort_no";
 
-        List<Map<String, Object>> intentRows = jdbcTemplate.queryForList(intentSql);
+        List<Map<String, Object>> intentRows = jdbcTemplate.queryForList("SELECT intent_id, intent_name, description, match_prompt, workflow_id " +
+                "FROM ai_intent WHERE enable_flag = '是' ORDER BY sort_no");
 
         if (intentRows.isEmpty()) {
             return new ArrayList<>();

@@ -2,6 +2,7 @@ package com.icbc.agent.aiworkflow.service.impl;
 
 import com.icbc.agent.aiintent.entity.IntentResult;
 import com.icbc.agent.aiworkflow.service.WorkflowService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -13,19 +14,13 @@ import java.util.*;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class WorkflowServiceImpl implements WorkflowService {
 
     private final JdbcTemplate jdbcTemplate;
     private final ApplicationContext applicationContext;
     private final SkillExecutor skillExecutor;
 
-    public WorkflowServiceImpl(JdbcTemplate jdbcTemplate,
-                               ApplicationContext applicationContext,
-                               SkillExecutor skillExecutor) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.applicationContext = applicationContext;
-        this.skillExecutor = skillExecutor;
-    }
 
     @Override
     public String execute(IntentResult result) {
@@ -67,10 +62,12 @@ public class WorkflowServiceImpl implements WorkflowService {
 
     @Override
     public Flux<Object> executeStream(IntentResult result) {
+        // 如果是正常聊天，则不执行任何操作
         if (result.isNormalChat()) {
             return Flux.empty();
         }
 
+        // 根据识别到的意图，加载工作流节点
         List<Map<String, Object>> nodes = loadWorkflowNodes(result.getWorkflowId());
         if (nodes.isEmpty()) {
             return Flux.just("工作流未配置执行节点");
