@@ -1,5 +1,6 @@
 package com.icbc.agent.aiworkflow.service.impl;
 
+import com.icbc.agent.aicommon.chat.bean.AiWorkflowNode;
 import com.icbc.agent.aicommon.chat.bean.WorkflowContext;
 import com.icbc.agent.aiintent.entity.IntentResult;
 import com.icbc.agent.aiworkflow.service.WorkflowService;
@@ -11,8 +12,12 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -30,8 +35,8 @@ public class WorkflowServiceImpl implements WorkflowService {
             return null;
         }
 
-        List<Map<String, Object>> nodes = loadWorkflowNodes(result.getWorkflowId());
-        if (nodes.isEmpty()) {
+        Map<String, AiWorkflowNode> nodeMap = loadWorkflowNodeMap(result.getWorkflowId());
+        if (nodeMap.isEmpty()) {
             return "工作流未配置执行节点";
         }
 
@@ -40,42 +45,24 @@ public class WorkflowServiceImpl implements WorkflowService {
         context.setQuestion(result.getQuestion());
         context.setWorkflowId(result.getWorkflowId());
         context.setIntentId(result.getIntentId());
-        StringBuilder resultBuilder = new StringBuilder();
 
-        for (Map<String, Object> node : nodes) {
-            String nodeType = (String) node.get("node_type");
-            String refId = (String) node.get("ref_id");
-            String nodeName = (String) node.get("node_name");
-
-            log.info("执行工作流节点: {} (类型: {}, refId: {})", nodeName, nodeType, refId);
-
-            try {
-                if ("tool".equals(nodeType)) {
-                    Object toolResult = executeTool(refId, context);
-                    context.put(nodeName, toolResult);
-                } else if ("skill".equals(nodeType)) {
-                    String skillResult = executeSkill(refId, context);
-                    resultBuilder.append(skillResult);
-                }
-            } catch (Exception e) {
-                log.error("节点执行失败: {} - {}", nodeName, e.getMessage(), e);
-                resultBuilder.append("节点[").append(nodeName).append("]执行失败: ").append(e.getMessage());
-            }
+        AiWorkflowNode entryNode = findEntryNode(nodeMap);
+        if (entryNode == null) {
+            return "工作流未找到入口节点";
         }
 
-        return resultBuilder.toString();
+        executeGraph(entryNode, nodeMap, context);
+        return context.getResult() != null ? context.getResult() : "";
     }
 
     @Override
     public Flux<Object> executeStream(IntentResult result) {
-        // 如果是正常聊天，则不执行任何操作
         if (result.isNormalChat()) {
             return Flux.empty();
         }
 
-        // 根据识别到的意图，加载工作流节点
-        List<Map<String, Object>> nodes = loadWorkflowNodes(result.getWorkflowId());
-        if (nodes.isEmpty()) {
+        Map<String, AiWorkflowNode> nodeMap = loadWorkflowNodeMap(result.getWorkflowId());
+        if (nodeMap.isEmpty()) {
             return Flux.just("工作流未配置执行节点");
         }
 
@@ -85,24 +72,12 @@ public class WorkflowServiceImpl implements WorkflowService {
         context.setWorkflowId(result.getWorkflowId());
         context.setIntentId(result.getIntentId());
 
-        for (Map<String, Object> node : nodes) {
-            String nodeType = (String) node.get("node_type");
-            String refId = (String) node.get("ref_id");
-            String nodeName = (String) node.get("node_name");
-
-            if ("tool".equals(nodeType)) {
-                try {
-                    Object toolResult = executeTool(refId, context);
-                    context.put(nodeName, toolResult);
-                } catch (Exception e) {
-                    log.error("工具节点执行失败: {}", nodeName, e);
-                }
-            } else if ("skill".equals(nodeType)) {
-                return skillExecutor.executeStream(refId, context);
-            }
+        AiWorkflowNode entryNode = findEntryNode(nodeMap);
+        if (entryNode == null) {
+            return Flux.just("工作流未找到入口节点");
         }
 
-        return Flux.just("工作流未包含技能节点");
+        return executeStreamGraph(entryNode, nodeMap, context);
     }
 
     private Object executeTool(String toolId, WorkflowContext context) throws Exception {
@@ -144,9 +119,226 @@ public class WorkflowServiceImpl implements WorkflowService {
         return skillExecutor.execute(skillId, context);
     }
 
-    private List<Map<String, Object>> loadWorkflowNodes(String workflowId) {
-        String sql = "SELECT node_type, node_name, ref_id " +
+    private Map<String, AiWorkflowNode> loadWorkflowNodeMap(String workflowId) {
+        String sql = "SELECT id, node_type, node_name, next_node_id, true_node_id, " +
+                "false_node_id, condition_expr, loop_body_node_id, ref_id, sort_no " +
                 "FROM ai_workflow_node WHERE workflow_id = ? AND enable_flag = '是' ORDER BY sort_no";
-        return jdbcTemplate.queryForList(sql, workflowId);
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, workflowId);
+        Map<String, AiWorkflowNode> nodeMap = new HashMap<>();
+        for (Map<String, Object> row : rows) {
+            AiWorkflowNode node = new AiWorkflowNode();
+            node.setId((Integer) row.get("id"));
+            node.setNodeType((String) row.get("node_type"));
+            node.setNodeName((String) row.get("node_name"));
+            node.setNextNodeId((String) row.get("next_node_id"));
+            node.setTrueNodeId((String) row.get("true_node_id"));
+            node.setFalseNodeId((String) row.get("false_node_id"));
+            node.setConditionExpr((String) row.get("condition_expr"));
+            node.setLoopBodyNodeId((String) row.get("loop_body_node_id"));
+            node.setRefId((String) row.get("ref_id"));
+            node.setNodeConfig((String) row.get("node_config"));
+            node.setSortNo((Integer) row.get("sort_no"));
+            nodeMap.put(String.valueOf(node.getId()), node);
+        }
+        return nodeMap;
+    }
+
+    private AiWorkflowNode findEntryNode(Map<String, AiWorkflowNode> nodeMap) {
+        return nodeMap.values().stream()
+                .min((a, b) -> Integer.compare(a.getSortNo() != null ? a.getSortNo() : 0, 
+                                                b.getSortNo() != null ? b.getSortNo() : 0))
+                .orElse(null);
+    }
+
+    private void executeGraph(AiWorkflowNode current, Map<String, AiWorkflowNode> nodeMap, WorkflowContext context) {
+        int maxIterations = 1000;
+        int iteration = 0;
+        
+        while (current != null && iteration++ < maxIterations) {
+            log.info("执行节点: {} (类型: {})", current.getNodeName(), current.getNodeType());
+            
+            try {
+                switch (current.getNodeType()) {
+                    case "tool":
+                        Object toolResult = executeTool(current.getRefId(), context);
+                        context.put(current.getNodeName(), toolResult);
+                        current = current.getNextNodeId() != null ? nodeMap.get(current.getNextNodeId()) : null;
+                        break;
+                        
+                    case "skill":
+                        String skillResult = executeSkill(current.getRefId(), context);
+                        context.setResult(skillResult);
+                        current = current.getNextNodeId() != null ? nodeMap.get(current.getNextNodeId()) : null;
+                        break;
+                        
+                    case "end":
+                        return;
+                        
+                    case "if":
+                        boolean condition = evalCondition(current.getConditionExpr(), context);
+                        String nextId = condition ? current.getTrueNodeId() : current.getFalseNodeId();
+                        current = nextId != null ? nodeMap.get(nextId) : null;
+                        break;
+                        
+                    case "parallel":
+                        executeParallelNode(current, nodeMap, context);
+                        current = current.getNextNodeId() != null ? nodeMap.get(current.getNextNodeId()) : null;
+                        break;
+                        
+                    case "loop":
+                        AiWorkflowNode loopBody = nodeMap.get(current.getLoopBodyNodeId());
+                        while (evalCondition(current.getConditionExpr(), context) && loopBody != null) {
+                            executeGraph(loopBody, nodeMap, context);
+                        }
+                        current = current.getNextNodeId() != null ? nodeMap.get(current.getNextNodeId()) : null;
+                        break;
+                        
+                    default:
+                        log.warn("未知节点类型: {}", current.getNodeType());
+                        current = current.getNextNodeId() != null ? nodeMap.get(current.getNextNodeId()) : null;
+                }
+            } catch (Exception e) {
+                log.error("节点执行失败: {}", current.getNodeName(), e);
+                context.setResult("节点[" + current.getNodeName() + "]执行失败: " + e.getMessage());
+                return;
+            }
+        }
+    }
+
+    private Flux<Object> executeStreamGraph(AiWorkflowNode current, Map<String, AiWorkflowNode> nodeMap, WorkflowContext context) {
+        while (current != null) {
+            log.info("执行流式节点: {} (类型: {})", current.getNodeName(), current.getNodeType());
+            
+            try {
+                switch (current.getNodeType()) {
+                    case "tool":
+                        Object toolResult = executeTool(current.getRefId(), context);
+                        context.put(current.getNodeName(), toolResult);
+                        current = current.getNextNodeId() != null ? nodeMap.get(current.getNextNodeId()) : null;
+                        break;
+                        
+                    case "skill":
+                        return skillExecutor.executeStream(current.getRefId(), context);
+                        
+                    case "end":
+                        return Flux.just(context.getResult() != null ? context.getResult() : "");
+                        
+                    case "if":
+                        boolean condition = evalCondition(current.getConditionExpr(), context);
+                        String nextId = condition ? current.getTrueNodeId() : current.getFalseNodeId();
+                        current = nextId != null ? nodeMap.get(nextId) : null;
+                        break;
+                        
+                    case "parallel":
+                        executeParallelNode(current, nodeMap, context);
+                        current = current.getNextNodeId() != null ? nodeMap.get(current.getNextNodeId()) : null;
+                        break;
+                        
+                    case "loop":
+                        AiWorkflowNode loopBody = nodeMap.get(current.getLoopBodyNodeId());
+                        while (evalCondition(current.getConditionExpr(), context) && loopBody != null) {
+                            executeGraph(loopBody, nodeMap, context);
+                        }
+                        current = current.getNextNodeId() != null ? nodeMap.get(current.getNextNodeId()) : null;
+                        break;
+                        
+                    default:
+                        log.warn("未知节点类型: {}", current.getNodeType());
+                        current = current.getNextNodeId() != null ? nodeMap.get(current.getNextNodeId()) : null;
+                }
+            } catch (Exception e) {
+                log.error("流式节点执行失败: {}", current.getNodeName(), e);
+                return Flux.error(e);
+            }
+        }
+        return Flux.just("工作流执行完成");
+    }
+
+    private void executeParallelNode(AiWorkflowNode node, Map<String, AiWorkflowNode> nodeMap, WorkflowContext context) {
+        if (node.getNodeConfig() == null || node.getNodeConfig().isEmpty()) {
+            log.warn("并行节点未配置分支: {}", node.getNodeName());
+            return;
+        }
+        
+        String[] branchNodeIds = node.getNodeConfig().split(",");
+        List<CompletableFuture<Object>> futures = new ArrayList<>();
+        
+        for (String branchNodeId : branchNodeIds) {
+            AiWorkflowNode branchNode = nodeMap.get(branchNodeId.trim());
+            if (branchNode != null) {
+                CompletableFuture<Object> future = CompletableFuture.supplyAsync(() -> {
+                    WorkflowContext branchContext = new WorkflowContext();
+                    branchContext.setSessionId(context.getSessionId());
+                    branchContext.setQuestion(context.getQuestion());
+                    branchContext.setWorkflowId(context.getWorkflowId());
+                    branchContext.setIntentId(context.getIntentId());
+                    branchContext.setVariables(new ConcurrentHashMap<>(context.getVariables()));
+                    executeGraph(branchNode, nodeMap, branchContext);
+                    return branchContext.getResult();
+                });
+                futures.add(future);
+            }
+        }
+        
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        
+        for (CompletableFuture<Object> future : futures) {
+            try {
+                Object result = future.get();
+                if (result != null) {
+                    log.info("并行分支执行结果: {}", result);
+                }
+            } catch (Exception e) {
+                log.error("并行分支执行失败", e);
+            }
+        }
+    }
+
+    private boolean evalCondition(String expr, WorkflowContext context) {
+        if (expr == null || expr.trim().isEmpty()) {
+            return false;
+        }
+        
+        expr = expr.trim();
+        
+        if (expr.contains("!=")) {
+            String[] parts = expr.split("!=", 2);
+            Object left = context.get(parts[0].trim());
+            String right = parts[1].trim().replace("\"", "").replace("'", "");
+            return !right.equals(String.valueOf(left));
+        } else if (expr.contains("==")) {
+            String[] parts = expr.split("==", 2);
+            Object left = context.get(parts[0].trim());
+            String right = parts[1].trim().replace("\"", "").replace("'", "");
+            return right.equals(String.valueOf(left));
+        } else if (expr.contains(">")) {
+            String[] parts = expr.split(">", 2);
+            Object left = context.get(parts[0].trim());
+            try {
+                double leftVal = Double.parseDouble(String.valueOf(left));
+                double rightVal = Double.parseDouble(parts[1].trim());
+                return leftVal > rightVal;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        } else if (expr.contains("<")) {
+            String[] parts = expr.split("<", 2);
+            Object left = context.get(parts[0].trim());
+            try {
+                double leftVal = Double.parseDouble(String.valueOf(left));
+                double rightVal = Double.parseDouble(parts[1].trim());
+                return leftVal < rightVal;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        } else {
+            Object value = context.get(expr);
+            if (value instanceof Boolean) {
+                return (Boolean) value;
+            } else if (value != null) {
+                return !String.valueOf(value).isEmpty() && !"false".equalsIgnoreCase(String.valueOf(value));
+            }
+            return false;
+        }
     }
 }

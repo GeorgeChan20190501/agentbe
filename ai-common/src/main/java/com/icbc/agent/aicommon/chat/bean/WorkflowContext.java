@@ -20,6 +20,11 @@ public class WorkflowContext {
     private String intentId;
 
     /**
+     * 工作流执行结果
+     */
+    private String result;
+
+    /**
      * 工具执行结果
      */
     private Map<String,Object> variables = new HashMap<>();

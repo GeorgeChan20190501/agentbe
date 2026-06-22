@@ -13,6 +13,11 @@ public class AiWorkflowNode {
     private String workflowId;
     private String nodeType;  // "tool" or "skill"
     private String nodeName;
+    private String nextNodeId;
+    private String trueNodeId;
+    private String falseNodeId;
+    private String conditionExpr;
+    private String loopBodyNodeId;
     private String refId;
     private String nodeConfig; // 新增：JSON配置
     private String enableFlag;
