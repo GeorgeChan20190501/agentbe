@@ -1,6 +1,7 @@
 package com.icbc.agent.aiworkflow.service.impl;
 
 import com.alibaba.fastjson2.JSON;
+import com.icbc.agent.aicommon.chat.bean.WorkflowContext;
 import com.icbc.agent.aimodel.AiModelFactory;
 import com.icbc.agent.aimodel.AiModelService;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -21,7 +22,7 @@ public class SkillExecutor {
         this.modelFactory = modelFactory;
     }
 
-    public String execute(String skillId, Map<String, Object> context) {
+    public String execute(String skillId, WorkflowContext context) {
         Map<String, Object> skill = loadSkill(skillId);
         if (skill == null) {
             return "技能不存在: " + skillId;
@@ -37,7 +38,7 @@ public class SkillExecutor {
         return model.chat(systemPrompt + "\n\n" + userPrompt);
     }
 
-    public Flux<Object> executeStream(String skillId, Map<String, Object> context) {
+    public Flux<Object> executeStream(String skillId, WorkflowContext context) {
         Map<String, Object> skill = loadSkill(skillId);
         if (skill == null) {
             return Flux.just("技能不存在: " + skillId);
@@ -61,9 +62,9 @@ public class SkillExecutor {
         return results.isEmpty() ? null : results.get(0);
     }
 
-    private String fillPromptTemplate(String template, Map<String, Object> context) {
+    private String fillPromptTemplate(String template, WorkflowContext context) {
         String result = template;
-        for (Map.Entry<String, Object> entry : context.entrySet()) {
+        for (Map.Entry<String, Object> entry : context.getVariables().entrySet()) {
             String placeholder = "${" + entry.getKey() + "}";
             String value = entry.getValue() != null ? JSON.toJSONString(entry.getValue()) : "";
             result = result.replace(placeholder, value);

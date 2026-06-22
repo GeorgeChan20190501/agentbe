@@ -1,5 +1,6 @@
 package com.icbc.agent.aiworkflow.service.impl;
 
+import com.icbc.agent.aicommon.chat.bean.WorkflowContext;
 import com.icbc.agent.aiintent.entity.IntentResult;
 import com.icbc.agent.aiworkflow.service.WorkflowService;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +11,8 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -33,7 +35,11 @@ public class WorkflowServiceImpl implements WorkflowService {
             return "工作流未配置执行节点";
         }
 
-        Map<String, Object> context = new HashMap<>();
+        WorkflowContext context = new WorkflowContext();
+        context.setSessionId(result.getSessionId());
+        context.setQuestion(result.getQuestion());
+        context.setWorkflowId(result.getWorkflowId());
+        context.setIntentId(result.getIntentId());
         StringBuilder resultBuilder = new StringBuilder();
 
         for (Map<String, Object> node : nodes) {
@@ -73,7 +79,11 @@ public class WorkflowServiceImpl implements WorkflowService {
             return Flux.just("工作流未配置执行节点");
         }
 
-        Map<String, Object> context = new HashMap<>();
+        WorkflowContext context = new WorkflowContext();
+        context.setSessionId(result.getSessionId());
+        context.setQuestion(result.getQuestion());
+        context.setWorkflowId(result.getWorkflowId());
+        context.setIntentId(result.getIntentId());
 
         for (Map<String, Object> node : nodes) {
             String nodeType = (String) node.get("node_type");
@@ -95,7 +105,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         return Flux.just("工作流未包含技能节点");
     }
 
-    private Object executeTool(String toolId, Map<String, Object> context) throws Exception {
+    private Object executeTool(String toolId, WorkflowContext context) throws Exception {
         String sql = "SELECT bean_name, method_name FROM ai_tool WHERE tool_id = ? AND enable_flag = '是'";
         Map<String, Object> tool = jdbcTemplate.queryForMap(sql, toolId);
 
@@ -119,7 +129,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         throw new NoSuchMethodException("方法不存在: " + methodName);
     }
 
-    private Object[] resolveToolArgs(Method method, Map<String, Object> context) {
+    private Object[] resolveToolArgs(Method method, WorkflowContext context) {
         Class<?>[] paramTypes = method.getParameterTypes();
         Object[] args = new Object[paramTypes.length];
         for (int i = 0; i < paramTypes.length; i++) {
@@ -130,7 +140,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         return args;
     }
 
-    private String executeSkill(String skillId, Map<String, Object> context) {
+    private String executeSkill(String skillId, WorkflowContext context) {
         return skillExecutor.execute(skillId, context);
     }
 

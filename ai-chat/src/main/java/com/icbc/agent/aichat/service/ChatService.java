@@ -53,13 +53,15 @@ public class ChatService {
         String history = loadHistory(sessionId);
         String contextQuestion = buildContextQuestion(history, question);
 
-        IntentResult intentResult = intentService.recognize(question);
+        IntentResult intentResult = intentService.recognize(contextQuestion);
         log.info("意图识别结果: intentId={}, workflowId={}, confidence={}", intentResult.getIntentId(), intentResult.getWorkflowId(), intentResult.getConfidence());
 
         saveMessage(sessionId, "user", question, intentResult);
 
         String response;
         if (!intentResult.isNormalChat()) {
+            intentResult.setSessionId(sessionId);
+            intentResult.setQuestion(question);
             response = workflowService.execute(intentResult);
             if (response == null) response = "工作流执行无结果";
         } else {
@@ -89,6 +91,8 @@ public class ChatService {
         Flux<Object> contentFlux;
         // 4.判断意图结果，如果识别到工作流，则调用工作流服务
         if (!intentResult.isNormalChat()) {
+            intentResult.setSessionId(sessionId);
+            intentResult.setQuestion(question);
             // 调用工作流服务
             contentFlux = workflowService.executeStream(intentResult).doOnNext(obj -> {
                 log.info("工作流服务返回了: {}", obj);
