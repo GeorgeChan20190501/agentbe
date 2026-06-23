@@ -16,10 +16,45 @@ public class IntentConfigLoader {
 
     private final JdbcTemplate jdbcTemplate;
 
-    /** 读取数据库意图配置，并根据id找意图示例，最终封装成IntentConfig对象
+    /** 缓存过期时间（毫秒） */
+    private static final long CACHE_TTL_MS = 5 * 60 * 1000L;
+
+    /** 缓存的意图配置 */
+    private volatile List<IntentConfig> cachedIntents;
+    /** 缓存加载时间戳 */
+    private volatile long cacheTimestamp;
+
+    /**
+     * 获取已启用的意图配置（带本地缓存，5分钟过期）
      * @return List<IntentConfig>
      */
     public List<IntentConfig> loadEnabledIntents() {
+        long now = System.currentTimeMillis();
+        if (cachedIntents != null && (now - cacheTimestamp) < CACHE_TTL_MS) {
+            return cachedIntents;
+        }
+        synchronized (this) {
+            // double-check
+            if (cachedIntents != null && (System.currentTimeMillis() - cacheTimestamp) < CACHE_TTL_MS) {
+                return cachedIntents;
+            }
+            cachedIntents = doLoadEnabledIntents();
+            cacheTimestamp = System.currentTimeMillis();
+            return cachedIntents;
+        }
+    }
+
+    /**
+     * 强制刷新缓存（供管理接口调用）
+     */
+    public void refreshCache() {
+        synchronized (this) {
+            cachedIntents = null;
+            cacheTimestamp = 0;
+        }
+    }
+
+    private List<IntentConfig> doLoadEnabledIntents() {
 
         List<Map<String, Object>> intentRows = jdbcTemplate.queryForList("SELECT intent_id, intent_name, description, match_prompt, workflow_id " +
                 "FROM ai_intent WHERE enable_flag = '是' ORDER BY sort_no");
