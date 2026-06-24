@@ -12,20 +12,8 @@
     <name>ai-intent</name>
     <description>ai-intent</description>
     <dependencies>
-        <dependency>
-            <groupId>com.icbc.agent</groupId>
-            <artifactId>ai-common</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
+
+
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>

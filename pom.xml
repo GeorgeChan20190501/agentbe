@@ -18,7 +18,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring.boot.version>3.5.15</spring.boot.version>
         <spring.framework.version>6.2.0</spring.framework.version>
-        <spring.ai.version>1.1.2</spring.ai.version>
+        <spring.ai.version>1.1.4</spring.ai.version>
         <junit.version>5.9.2</junit.version>
         <mockito.version>5.1.1</mockito.version>
         <lombok.version>1.18.30</lombok.version>
@@ -40,9 +40,33 @@
         <module>ai-admin</module>
     </modules>
 
+    <dependencies>
+        <!-- 父项目直接指定依赖，所有子项目会自动继承，
+        明确所有子模块都需要的依赖，放父 POM 直接依赖是更好的选择，
+        避免每个子模块重复声明同一依赖，也更易统一管理 -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.icbc.agent</groupId>
+            <artifactId>ai-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
     <dependencyManagement>
+        <!-- 依赖管理,这里不会直接导入依赖，而是指定子的依赖版本，子模块只需指定依赖版本可以继承，也可以指定版本 -->
         <dependencies>
-            <!-- Internal Modules -->
             <dependency>
                 <groupId>com.icbc.agent</groupId>
                 <artifactId>ai-common</artifactId>
@@ -101,11 +125,7 @@
                 <version>${junit.version}</version>
                 <scope>test</scope>
             </dependency>
-            <dependency>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok</artifactId>
-                <version>${lombok.version}</version>
-            </dependency>
+
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
@@ -114,7 +134,31 @@
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
-                <version>1.4.11</version>
+                <version>1.5.25</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-core</artifactId>
+                <version>1.5.25</version>
+            </dependency>
+
+            <!-- Spring Boot autoconfigure: 覆盖 mybatis-plus 传递的旧版本，修复 CVE-2026-40971 -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-autoconfigure</artifactId>
+                <version>${spring.boot.version}</version>
+            </dependency>
+
+            <!-- 覆盖传递依赖的旧版本，修复 Spring Framework CVE -->
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-web</artifactId>
+                <version>6.2.18</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-webflux</artifactId>
+                <version>6.2.18</version>
             </dependency>
 
             <!-- Test Dependencies -->
@@ -139,7 +183,7 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- AI & ML Libraries (for future V4-V5) -->
+
             <dependency>
                 <groupId>org.tensorflow</groupId>
                 <artifactId>tensorflow-core-platform</artifactId>
@@ -148,12 +192,18 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-core</artifactId>
-                <version>2.15.2</version>
+                <version>2.21.1</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
-                <version>2.15.2</version>
+                <version>2.21.1</version>
+            </dependency>
+            <!-- 覆盖 spring-ai-client-chat 传递的 tools.jackson.core:jackson-core:3.0.3，修复 CVE-2026-29062 -->
+            <dependency>
+                <groupId>tools.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>3.1.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

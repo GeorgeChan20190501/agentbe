@@ -17,6 +17,18 @@
     <properties>
         <java.version>17</java.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- 覆盖 ai-web 传递的旧版 spring-ai-vector-store:1.1.2，修复 CVE-2026-22738 -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-vector-store</artifactId>
+                <version>1.1.4</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>

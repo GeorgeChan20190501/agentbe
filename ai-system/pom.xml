@@ -15,14 +15,7 @@
 
 
     <dependencies>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.icbc.agent</groupId>
-            <artifactId>ai-common</artifactId>
-        </dependency>
+
+
     </dependencies>
 </project>
