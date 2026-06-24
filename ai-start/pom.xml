@@ -43,6 +43,12 @@
             <artifactId>ai-web</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.icbc.agent</groupId>
+            <artifactId>ai-common</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -50,6 +56,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.icbc.agent.AiStartApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

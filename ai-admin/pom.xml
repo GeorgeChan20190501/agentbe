@@ -15,7 +15,10 @@
 
     <dependencies>
 
-
+        <dependency>
+            <groupId>com.icbc.agent</groupId>
+            <artifactId>ai-common</artifactId>
+        </dependency>
     </dependencies>
 
 

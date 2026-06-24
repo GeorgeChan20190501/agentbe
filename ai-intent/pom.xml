@@ -11,9 +11,12 @@
     <artifactId>ai-intent</artifactId>
     <name>ai-intent</name>
     <description>ai-intent</description>
+
     <dependencies>
-
-
+        <dependency>
+            <groupId>com.icbc.agent</groupId>
+            <artifactId>ai-common</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
@@ -30,5 +33,4 @@
             <artifactId>spring-ai-client-chat</artifactId>
         </dependency>
     </dependencies>
-
 </project>

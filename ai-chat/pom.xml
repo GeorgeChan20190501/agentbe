@@ -20,7 +20,10 @@
             <artifactId>spring-ai-client-chat</artifactId>
             <scope>compile</scope>
         </dependency>
-
+        <dependency>
+            <groupId>com.icbc.agent</groupId>
+            <artifactId>ai-common</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>com.icbc.agent</groupId>
@@ -29,10 +32,6 @@
         <dependency>
             <groupId>com.icbc.agent</groupId>
             <artifactId>ai-intent</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.icbc.agent</groupId>
-            <artifactId>ai-common</artifactId>
         </dependency>
 
         <dependency>

@@ -15,16 +15,12 @@
     <dependencies>
         <dependency>
             <groupId>com.icbc.agent</groupId>
-            <artifactId>ai-chat</artifactId>
+            <artifactId>ai-common</artifactId>
         </dependency>
 
         <dependency>
             <groupId>com.icbc.agent</groupId>
-            <artifactId>ai-model</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.icbc.agent</groupId>
-            <artifactId>ai-common</artifactId>
+            <artifactId>ai-chat</artifactId>
         </dependency>
 
         <dependency>

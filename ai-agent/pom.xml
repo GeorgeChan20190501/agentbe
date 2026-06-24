@@ -16,7 +16,10 @@
             <groupId>com.icbc.agent</groupId>
             <artifactId>ai-chat</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>com.icbc.agent</groupId>
+            <artifactId>ai-common</artifactId>
+        </dependency>
 
     </dependencies>
 
