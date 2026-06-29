@@ -1,12 +1,13 @@
 package com.icbc.agent.aiworkflow.service.impl;
 
 import com.icbc.agent.aicommon.chat.bean.AiWorkflowNode;
+import com.icbc.agent.aicommon.chat.bean.ToolExecutor;
 import com.icbc.agent.aicommon.chat.bean.WorkflowContext;
 import com.icbc.agent.aiintent.entity.IntentResult;
+import com.icbc.agent.aiskill.service.SkillService;
 import com.icbc.agent.aiworkflow.service.WorkflowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationContext;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
@@ -14,7 +15,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,8 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WorkflowServiceImpl implements WorkflowService {
 
     private final JdbcTemplate jdbcTemplate;
-    private final ApplicationContext applicationContext;
-    private final SkillExecutor skillExecutor;
+    private final ToolExecutor toolExecutor;
+    private final SkillService skillService;
 
     // ==================== 公共接口 ====================
 
@@ -48,12 +48,14 @@ public class WorkflowServiceImpl implements WorkflowService {
             return "工作流未找到入口节点";
         }
 
+        // 同步执行工作流图中的各个节点，执行结果保存到context中
         int maxIterations = 1000;
         while (current != null && maxIterations-- > 0) {
             if ("end".equals(current.getNodeType())) break;
             if (!executeNodeSync(current, nodeMap, context)) break;
             current = advanceNode(current, nodeMap, context);
         }
+        // 返回工作流执行结果
         return context.getResult() != null ? context.getResult() : "";
     }
 
@@ -63,17 +65,20 @@ public class WorkflowServiceImpl implements WorkflowService {
             return Flux.empty();
         }
 
+        //获取数据库配置的工作流节点信息
         Map<String, AiWorkflowNode> nodeMap = loadWorkflowNodeMap(result.getWorkflowId());
         if (nodeMap.isEmpty()) {
             return Flux.just("工作流未配置执行节点");
         }
-
+        //构建工作流执行上下文
         WorkflowContext context = buildContext(result);
+        //找到工作流的入口节点
         AiWorkflowNode current = findEntryNode(nodeMap);
         if (current == null) {
             return Flux.just("工作流未找到入口节点");
         }
 
+        //执行工作流图
         return executeStreamGraph(current, nodeMap, context);
     }
 
@@ -96,11 +101,11 @@ public class WorkflowServiceImpl implements WorkflowService {
             log.info("执行节点: {} (类型: {})", node.getNodeName(), node.getNodeType());
             switch (node.getNodeType()) {
                 case "tool":
-                    Object toolResult = executeTool(node.getRefId(), node.getNodeConfig(), context);
+                    Object toolResult = toolExecutor.execute(node.getRefId(), node.getNodeConfig(), context);
                     context.put(node.getNodeName(), toolResult);
                     return true;
                 case "skill":
-                    context.setResult(executeSkill(node.getRefId(), context));
+                    context.setResult(skillService.execute(node.getRefId(), context));
                     return true;
                 case "parallel":
                     executeParallelNode(node, nodeMap, context);
@@ -145,7 +150,8 @@ public class WorkflowServiceImpl implements WorkflowService {
             log.info("执行流式节点: {} (类型: {})", current.getNodeName(), current.getNodeType());
             try {
                 if ("skill".equals(current.getNodeType())) {
-                    return skillExecutor.executeStream(current.getRefId(), context);
+                    //读取数据库配置的skill信息,将工具执行结果填充到提示词模板，结合配置的skill系统提示词，形成最终的提示词，让大模型生成结果
+                    return skillService.executeStream(current.getRefId(), context);
                 }
                 if ("end".equals(current.getNodeType())) {
                     return Flux.just(context.getResult() != null ? context.getResult() : "");
@@ -160,69 +166,6 @@ public class WorkflowServiceImpl implements WorkflowService {
             }
         }
         return Flux.just("工作流执行完成");
-    }
-
-    // ==================== 节点执行器 ====================
-
-    private Object executeTool(String toolId, String nodeConfig, WorkflowContext context) throws Exception {
-        String sql = "SELECT bean_name, method_name FROM ai_tool WHERE tool_id = ? AND enable_flag = '是'";
-        Map<String, Object> tool = jdbcTemplate.queryForMap(sql, toolId);
-
-        String beanName = (String) tool.get("bean_name");
-        String methodName = (String) tool.get("method_name");
-
-        Object bean = applicationContext.getBean(beanName);
-        Method method = findMethod(bean, methodName);
-        Object[] args = resolveToolArgs(method, nodeConfig, context);
-        return method.invoke(bean, args);
-    }
-
-    private Method findMethod(Object bean, String methodName) throws NoSuchMethodException {
-        for (Method m : bean.getClass().getMethods()) {
-            if (m.getName().equals(methodName)) {
-                return m;
-            }
-        }
-        throw new NoSuchMethodException("方法不存在: " + methodName);
-    }
-
-    /**
-     * 解析Tool参数：优先从nodeConfig的argMappings读取，否则按参数类型尝试从context匹配
-     * nodeConfig格式示例: {"argMappings":{"0":"question","1":"customerId"}}
-     */
-    private Object[] resolveToolArgs(Method method, String nodeConfig, WorkflowContext context) {
-        Class<?>[] paramTypes = method.getParameterTypes();
-        Object[] args = new Object[paramTypes.length];
-
-        Map<String, String> argMappings = null;
-        if (nodeConfig != null && !nodeConfig.isEmpty()) {
-            try {
-                com.alibaba.fastjson2.JSONObject config = com.alibaba.fastjson2.JSON.parseObject(nodeConfig);
-                com.alibaba.fastjson2.JSONObject mappings = config.getJSONObject("argMappings");
-                if (mappings != null) {
-                    argMappings = new HashMap<>();
-                    for (String key : mappings.keySet()) {
-                        argMappings.put(key, mappings.getString(key));
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Tool nodeConfig解析失败: {}", nodeConfig, e);
-            }
-        }
-
-        for (int i = 0; i < paramTypes.length; i++) {
-            if (argMappings != null && argMappings.containsKey(String.valueOf(i))) {
-                String contextKey = argMappings.get(String.valueOf(i));
-                args[i] = context.get(contextKey);
-            } else if (paramTypes[i] == String.class) {
-                args[i] = context.getOrDefault("defaultParam", "1001");
-            }
-        }
-        return args;
-    }
-
-    private String executeSkill(String skillId, WorkflowContext context) {
-        return skillExecutor.execute(skillId, context);
     }
 
     // ==================== 并行节点 ====================

@@ -24,6 +24,11 @@
 
         <dependency>
             <groupId>com.icbc.agent</groupId>
+            <artifactId>ai-tool</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.icbc.agent</groupId>
             <artifactId>ai-intent</artifactId>
         </dependency>
 

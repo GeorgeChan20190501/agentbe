@@ -43,9 +43,12 @@ public class ChatService {
     public ChatResult chat(String question, String sessionId) {
         sessionId = ensureSession(sessionId);
 
+        // 加载历史20轮对话
         List<Message> historyMessages = loadHistoryMessages(sessionId);
+        // 将结构化历史消息 + 当前问题拼接为上下文感知的提问文本
         String contextQuestion = buildContextQuestion(historyMessages, question);
 
+        // 上下文感知-意图识别
         IntentResult intentResult = intentService.recognize(contextQuestion);
         log.info("意图识别结果: intentId={}, workflowId={}, confidence={}", intentResult.getIntentId(), intentResult.getWorkflowId(), intentResult.getConfidence());
 
@@ -58,11 +61,14 @@ public class ChatService {
             response = workflowService.execute(intentResult);
             if (response == null) response = "工作流执行无结果";
         } else {
+            // 未命中工作流，使用默认聊天模型
             AiModelService modelService = modelFactory.getDefaultModel();
             response = modelService.chat(contextQuestion);
         }
 
+        // 保存本轮用户和机器人的对话内容
         saveMessage(sessionId, "assistant", response, intentResult);
+        // 更新会话最后一条用户消息为当前问题
         chatRepository.updateSession(sessionId, question);
 
         return new ChatResult(sessionId, response);

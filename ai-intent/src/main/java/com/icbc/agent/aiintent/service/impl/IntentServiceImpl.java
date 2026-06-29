@@ -7,6 +7,7 @@ import com.icbc.agent.aiintent.entity.IntentConfig;
 import com.icbc.agent.aiintent.entity.IntentResult;
 import com.icbc.agent.aiintent.service.IntentService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class IntentServiceImpl implements IntentService {
 
     private final ChatClient chatClient;
@@ -22,6 +24,7 @@ public class IntentServiceImpl implements IntentService {
 
     @Override
     public IntentResult recognize(String question) {
+        log.info("用于意图识别的提问: {}", question);
         List<IntentConfig> intents = intentConfigLoader.loadEnabledIntents();
 
         if (intents.isEmpty()) {
@@ -78,17 +81,17 @@ public class IntentServiceImpl implements IntentService {
     }
 
     private IntentResult parseIntentResult(String response, List<IntentConfig> intents) {
-                try {
-                    String cleaned = response.trim()
-                            .replaceAll("json", "") .replaceAll("", "")
-                            .trim();
-                    JSONObject json = JSON.parseObject(cleaned);
-                    String intentId = json.getString("intentId");
-                    double confidence = json.getDoubleValue("confidence");
+        try {
+            String cleaned = response.trim()
+                    .replaceAll("json", "").replaceAll("", "")
+                    .trim();
+            JSONObject json = JSON.parseObject(cleaned);
+            String intentId = json.getString("intentId");
+            double confidence = json.getDoubleValue("confidence");
 
-                    if (intentId == null || intentId.isEmpty() || confidence < 0.7) {
-                        return new IntentResult(null, "普通对话", null, confidence);
-                    }
+            if (intentId == null || intentId.isEmpty() || confidence < 0.7) {
+                return new IntentResult(null, "普通对话", null, confidence);
+            }
 
             return intents.stream()
                     .filter(i -> i.getIntentId().equals(intentId))
