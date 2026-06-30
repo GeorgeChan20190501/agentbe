@@ -78,12 +78,16 @@ public class ChatService {
         sessionId = ensureSession(sessionId);
         final String finalSessionId = sessionId;
 
+        // 加载历史10轮对话
         List<Message> historyMessages = loadHistoryMessages(sessionId);
+        // 将结构化历史消息 + 当前问题拼接为上下文感知的提问文本
         String contextQuestion = buildContextQuestion(historyMessages, question);
 
+        // 上下文感知-意图识别
         IntentResult intentResult = intentService.recognize(contextQuestion);
         log.info("流式意图识别: intentId={}, workflowId={}", intentResult.getIntentId(), intentResult.getWorkflowId());
 
+        // 保存本轮用户消息
         saveMessage(sessionId, "user", question, intentResult);
 
         Flux<Object> contentFlux;
@@ -94,6 +98,7 @@ public class ChatService {
                 log.info("工作流服务返回了: {}", obj);
             });
         } else {
+            // 未命中工作流，使用默认聊天模型
             contentFlux = modelFactory.getDefaultModel().streamChat(contextQuestion);
         }
 
@@ -107,7 +112,9 @@ public class ChatService {
             String response = responseCollector.toString();
             if (!response.isEmpty()) {
                 try {
+                    // 保存本轮用户和机器人的对话内容
                     saveMessage(finalSessionId, "assistant", response, intentResult);
+                    // 更新会话最后一条用户消息为当前问题
                     chatRepository.updateSession(finalSessionId, question);
                 } catch (Exception e) {
                     log.error("流式响应保存失败", e);
@@ -115,6 +122,7 @@ public class ChatService {
             }
         });
 
+        // 发送会话事件,优先给一个sessionId
         Flux<Object> sessionEvent = Flux.just(new SessionEvent(finalSessionId));
         return sessionEvent.concatWith(contentFlux);
     }
